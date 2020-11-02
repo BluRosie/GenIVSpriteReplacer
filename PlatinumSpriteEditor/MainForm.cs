@@ -13,29 +13,28 @@ using System.Xml;
 namespace PlatinumSpriteEditor
 {
 	class MainForm
-	{	
-		NarcReader nr;
-		
+	{		
 		Rectangle rect;
-		IndexedBitmapHandler Handler;
-		
+
 		public MainForm(string[] args)
 		{
 			//Console.WriteLine("{0}", args[0]);
 
-			if (args.Length != 2)
+			if (args.Length != 3)
 			{
-				Console.WriteLine("pngtoncgr converts a png image to Nintendo's ncgr format for use with HGSS Sprites\n\nUsage:  pngtoncgr [input path] [output path]\n");
+				Console.WriteLine("pngtoncgr converts a png image to Nintendo's ncgr format for use with HGSS Sprites\n\nUsage:  pngtoncgr [input path] [ncgr path] [nclr path]\n");
 				return;
 			}
 
 			FileStream output = System.IO.File.OpenWrite(args[1]);
+			FileStream palette = System.IO.File.OpenWrite(args[2]);
 
 			Bitmap source = (Bitmap)Image.FromFile(args[0]);
 
 			SaveBin(output, source);
+			SavePal(palette, StandardizeColors(source));
 		}
-						
+
 		Bitmap MakeImage(FileStream fs)
 		{
 			fs.Seek(48L, SeekOrigin.Current);
