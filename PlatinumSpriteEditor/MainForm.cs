@@ -22,17 +22,17 @@ namespace PlatinumSpriteEditor
 
 			if (args.Length != 3)
 			{
-				Console.WriteLine("pngtoncgr converts a png image to Nintendo's ncgr format for use with HGSS Sprites\n\nUsage:  pngtoncgr [input path] [ncgr path] [nclr path]\n");
+				Console.WriteLine("ncgrtopng converts Nintendo's ncgr format to pngs for use with HGSS Sprites\n\nUsage:  pngtoncgr [ncgr path] [nclr path] [png path]\n");
 				return;
 			}
 
-			FileStream output = System.IO.File.OpenWrite(args[1]);
-			FileStream palette = System.IO.File.OpenWrite(args[2]);
+			FileStream ncgr = System.IO.File.OpenRead(args[0]);
+			FileStream nclr = System.IO.File.OpenRead(args[1]);
 
-			Bitmap source = (Bitmap)Image.FromFile(args[0]);
+			Bitmap png = MakeImage(ncgr);
+			png.Palette = SetPal(nclr);
 
-			SaveBin(output, source);
-			SavePal(palette, StandardizeColors(source));
+			SavePNG(png, args[2]);
 		}
 
 		Bitmap MakeImage(FileStream fs)
