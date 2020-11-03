@@ -18,21 +18,78 @@ namespace PlatinumSpriteEditor
 
 		public MainForm(string[] args)
 		{
+			int i;
+
 			//Console.WriteLine("{0}", args[0]);
 
-			if (args.Length != 3)
+			if (args.Length != 2)
 			{
-				Console.WriteLine("ncgrtopng converts Nintendo's ncgr format to pngs for use with HGSS Sprites\n\nUsage:  pngtoncgr [ncgr path] [nclr path] [png path]\n");
+				Console.WriteLine("gengfxdata converts Nintendo's ncgr format to pngs for use with HGSS Sprites\n\nUsage:  gengfxdata [path to unpacked a004] [path to output directory]\n");
 				return;
 			}
 
-			FileStream ncgr = System.IO.File.OpenRead(args[0]);
-			FileStream nclr = System.IO.File.OpenRead(args[1]);
+			System.IO.Directory.CreateDirectory(args[1]);
 
-			Bitmap png = MakeImage(ncgr);
-			png.Palette = SetPal(nclr);
+			// backf backm frontf frontm pal shinypal
+			for (i = 0; i <= (494 * 6) - 1; i += 6)
+			{
+				Bitmap png;
+				int species = i / 6;
 
-			SavePNG(png, args[2]);
+				System.IO.Directory.CreateDirectory(args[1] + "\\" + species.ToString("D3"));
+
+				FileStream ncgr = System.IO.File.OpenRead(args[0] + "\\a004_" + i.ToString("D4")); // female back sprite
+				FileStream nclr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 5).ToString("D4")); // shiny pal
+
+				if (ncgr.Length > 0)
+				{
+					png = MakeImage(ncgr);
+					png.Palette = SetPal(nclr);
+				}
+				else
+					png = null;
+
+				SavePNG(png, args[1] + "\\" + species.ToString("D3") + "\\00.png");
+
+				ncgr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 1).ToString("D4")); // male back sprite
+				nclr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 5).ToString("D4")); // shiny pal
+
+				if (ncgr.Length > 0)
+				{
+					png = MakeImage(ncgr);
+					png.Palette = SetPal(nclr);
+				}
+				else
+					png = null;
+
+				SavePNG(png, args[1] + "\\" + species.ToString("D3") + "\\01.png");
+
+				ncgr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 2).ToString("D4")); // female front sprite
+				nclr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 4).ToString("D4")); // normal pal
+
+				if (ncgr.Length > 0)
+				{
+					png = MakeImage(ncgr);
+					png.Palette = SetPal(nclr);
+				}
+				else
+					png = null;
+
+				SavePNG(png, args[1] + "\\" + species.ToString("D3") + "\\02.png");
+
+				ncgr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 3).ToString("D4")); // male front sprite
+				nclr = System.IO.File.OpenRead(args[0] + "\\a004_" + (i + 4).ToString("D4")); // normal pal
+
+				if (ncgr.Length > 0)
+				{
+					png = MakeImage(ncgr);
+					png.Palette = SetPal(nclr);
+				}
+				else
+					png = null;
+
+				SavePNG(png, args[1] + "\\" + species.ToString("D3") + "\\03.png");
+			}
 		}
 
 		Bitmap MakeImage(FileStream fs)
@@ -135,12 +192,19 @@ namespace PlatinumSpriteEditor
 		
 		void SavePNG(Bitmap image, string filename)
 		{
-			IndexedBitmapHandler Handler = new IndexedBitmapHandler();
-			byte[] array = Handler.GetArray(image);
-			Bitmap temp = Handler.MakeImage(image.Width, image.Height, array, image.PixelFormat);
-			ColorPalette cleaned = Handler.CleanPalette(image);
-			temp.Palette = cleaned;
-			temp.Save(filename, ImageFormat.Png);
+			if (image != null)
+			{
+				IndexedBitmapHandler Handler = new IndexedBitmapHandler();
+				byte[] array = Handler.GetArray(image);
+				Bitmap temp = Handler.MakeImage(image.Width, image.Height, array, image.PixelFormat);
+				ColorPalette cleaned = Handler.CleanPalette(image);
+				temp.Palette = cleaned;
+				temp.Save(filename, ImageFormat.Png);
+			}
+			else
+			{
+				System.IO.File.Create(filename);
+			}
 		}
 				
 		void SaveBin(FileStream fs, Bitmap source)
