@@ -11,7 +11,7 @@ namespace PlatinumSpriteEditor
 		/// <summary>
 		/// Program entry point.
 		/// </summary>
-		[STAThread]
+		//[STAThread]
 		static void Main(string[] args)
 		{
 			new MainForm(args);

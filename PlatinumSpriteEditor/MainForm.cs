@@ -9,7 +9,6 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Security.Authentication;
 using System.Xml;
-using System.Linq.Expressions;
 
 namespace PlatinumSpriteEditor
 {
@@ -21,182 +20,146 @@ namespace PlatinumSpriteEditor
 		{
 			int i;
 
-			int index;
-
-			FileStream ncgr;
-			FileStream nclr;
-
-			Bitmap png;
-
 			//Console.WriteLine("{0}", args[0]);
 
 			if (args.Length != 2)
 			{
-				Console.WriteLine("gengfxnarc converts the gfx folder format to the files directly for use with HGSS Sprites\n\nUsage:  gengfxnarc [path to gfx directory] [path to output directory]\n");
+				Console.WriteLine("gengfxicons converts Nintendo's ncgr format to pngs for use with icons specifically\n\nUsage:  gengfxicons [path to unpacked a020] [path to output directory]\n");
 				return;
 			}
 
 			System.IO.Directory.CreateDirectory(args[1]);
 
+			FileStream palList = System.IO.File.OpenRead("rawdata\\iconpalettetable.bin"); // tired of making everything super portable.  set it up correctly and you won't have to deal with anything.
+			FileStream nclr = System.IO.File.OpenRead(args[0] + "\\a020_000"); // all of the palettes
+
 			// backf backm frontf frontm pal shinypal
-			for (i = 0; i <= 493; i++)
+			for (i = 7; i <= 550; i++)
 			{
-				index = i * 6;
+				Bitmap png;
+				BinaryReader binaryReader = new BinaryReader(palList);
+				int species = i - 7;
+				int palNum = binaryReader.ReadByte();
 
-				ncgr = System.IO.File.OpenWrite(args[1] + "\\a004_" + index.ToString("D4")); // female back sprite
-				nclr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 5).ToString("D4")); // shiny pal
+				FileStream ncgr = System.IO.File.OpenRead(args[0] + "\\a020_" + i.ToString("D3"));
 
-				try
+				if (ncgr.Length > 0)
 				{
-					png = (Bitmap)Image.FromFile(args[0] + "\\" + i.ToString("D3") + "\\00.png");
+					png = MakeImage(ncgr);
+					png.Palette = SetPal(nclr, palNum);
 				}
-				catch (OutOfMemoryException)
-				{
+				else
 					png = null;
-				}
 
-				if (png != null)
-				{
-					SaveBin(ncgr, png);
-					SavePal(nclr, StandardizeColors(png));
-				}
-
-				ncgr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 1).ToString("D4")); // male back sprite
-                //nclr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 5).ToString("D4")); // shiny pal
-
-				try
-				{
-					png = (Bitmap)Image.FromFile(args[0] + "\\" + i.ToString("D3") + "\\01.png");
-				}
-				catch (OutOfMemoryException)
-				{
-					png = null;
-				}
-
-				if (png != null)
-				{
-					SaveBin(ncgr, png);
-					SavePal(nclr, StandardizeColors(png));
-				}
-
-				ncgr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 2).ToString("D4")); // female front sprite
-				nclr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 4).ToString("D4")); // normal pal
-
-				try
-				{
-					png = (Bitmap)Image.FromFile(args[0] + "\\" + i.ToString("D3") + "\\02.png");
-				}
-				catch (OutOfMemoryException)
-				{
-					png = null;
-				}
-
-				if (png != null)
-				{
-					SaveBin(ncgr, png);
-					SavePal(nclr, StandardizeColors(png));
-				}
-
-				ncgr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 3).ToString("D4")); // male front sprite
-				//nclr = System.IO.File.OpenWrite(args[1] + "\\a004_" + (index + 4).ToString("D4")); // normal pal
-
-				try
-				{
-					png = (Bitmap)Image.FromFile(args[0] + "\\" + i.ToString("D3") + "\\03.png");
-				}
-				catch (OutOfMemoryException)
-				{
-					png = null;
-				}
-
-				if (png != null)
-				{
-					SaveBin(ncgr, png);
-					SavePal(nclr, StandardizeColors(png));
-				}
+				SavePNG(png, args[1] + "\\" + species.ToString("D3") + ".png");
 			}
 		}
-		
-		ColorPalette StandardizeColors(Bitmap image)
+
+		const int width = 32;
+		const int height = 64;
+		const int filesize = width * height;
+
+		Bitmap MakeImage(FileStream fs)
 		{
-			ColorPalette pal = image.Palette;
-			bool OffColor = false;
-			for (int i=0; i<pal.Entries.Length; i++)
+			fs.Seek(48L, SeekOrigin.Begin);
+			BinaryReader binaryReader = new BinaryReader(fs);
+			UInt16[] array = new UInt16[filesize / 4];
+			for (int i = 0; i < filesize / 4; i++)
 			{
-				if ((pal.Entries[i].R % 8 != 0) || (pal.Entries[i].G % 8 != 0) || (pal.Entries[i].B % 8 != 0))
-					OffColor = true;
+				array[i] = binaryReader.ReadUInt16();
 			}
-			if (OffColor)
+
+			Bitmap r_bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+			rect = new Rectangle(0, 0, width, height);
+			byte[] array3 = new byte[filesize + 1], array4 = new byte[filesize + 1]; // +2 prevents reading beyond end of file apparently
+
+			for (int k = 0; k < filesize / 4; k += 2)
 			{
-//				yesno = MessageBox.Show("Colors are not appropriately formatted for storage.  Fix?", "Incompatible colors", MessageBoxButtons.YesNo);
-//				if(yesno != DialogResult.Yes)
-//					MessageBox.Show("Colors will not store correctly.  Image may look different in-game.", "Failed");
-				for (int i=0; i<pal.Entries.Length; i++)
+				array3[k * 4] = (byte)((array[(k)]) & 0xF);
+				array3[k * 4 + 1] = (byte)((array[(k)] >> 4) & 0xF);
+				array3[k * 4 + 2] = (byte)((array[(k)] >> 8) & 0xF);
+				array3[k * 4 + 3] = (byte)((array[(k)] >> 12) & 0xF);
+				array3[k * 4 + 4] = (byte)((array[(k + 1)]) & 0xF);
+				array3[k * 4 + 5] = (byte)((array[(k + 1)] >> 4) & 0xF);
+				array3[k * 4 + 6] = (byte)((array[(k + 1)] >> 8) & 0xF);
+				array3[k * 4 + 7] = (byte)((array[(k + 1)] >> 12) & 0xF);
+			}
+
+			int pos = 0;
+			for (int tiley = 0; tiley < height / 8; tiley++)
+			{
+				for (int tilex = 0; tilex < width / 8; tilex++)
 				{
-					byte r = (byte)(pal.Entries[i].R - (pal.Entries[i].R % 8));
-					byte g = (byte)(pal.Entries[i].G - (pal.Entries[i].G % 8));
-					byte b = (byte)(pal.Entries[i].B - (pal.Entries[i].B % 8));
-					pal.Entries[i] = Color.FromArgb(r, g, b);
-				}
-			}
-			return pal;
-		}
-				
-		void SaveBin(FileStream fs, Bitmap source)
-		{
-			BinaryWriter binaryWriter = new BinaryWriter(fs);
-			rect = new Rectangle(0, 0, 160, 80);
-			BitmapData bitmapData = source.LockBits(rect, ImageLockMode.ReadOnly, source.PixelFormat);
-			IntPtr scan = bitmapData.Scan0;
-			byte[] array = new byte[12800];
-			Marshal.Copy(scan, array, 0, 12800);
-			source.UnlockBits(bitmapData);
-			ushort[] array2 = new ushort[3200];
-			for (int i = 0; i < 3200; i++)
-			{
-				array2[i] = (ushort)((array[i * 4] & 0xF) | ((array[i * 4 + 1] & 0xF) << 4) | ((array[i * 4 + 2] & 0xF) << 8) | ((array[i * 4 + 3] & 0xF) << 12));
-			}
-			uint num = 0u;
-			//if (DPCheck.Checked == false)
-			{
-				for (int j = 0; j < 3200; j++)
-				{
-					unchecked
+					for (int y = 0; y < 8; y++)
 					{
-						ushort[] array3;
-						IntPtr value;
-						(array3 = array2)[(int)(value = (IntPtr)j)] = (ushort)(array3[(int)value] ^ (ushort)(num & 0xFFFF));
-						num *= 1103515245;
-						num += 24691;
+						for (int x = 0; x < 8; x++)
+						{
+							SetIndexedPixel(array4, array3, x + tilex * 8, y + tiley * 8, pos);
+							pos++;
+						}
 					}
 				}
 			}
-			byte[] array4 = new byte[48]
-			{82, 71, 67, 78, 255, 254, 0, 1, 48, 25, 0, 0, 16, 0, 1, 0, 82, 65, 72, 67, 32, 25, 0, 0, 10, 0, 20, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 25, 0, 0, 24, 0, 0, 0};
-			for (int k = 0; k < 48; k++)
+
+			BitmapData bitmapData = r_bitmap.LockBits(rect, ImageLockMode.WriteOnly, r_bitmap.PixelFormat);
+			IntPtr scan = bitmapData.Scan0;
+			Marshal.Copy(array4, 0, scan, filesize);
+			r_bitmap.UnlockBits(bitmapData);
+			Bitmap bitmap = new Bitmap(1, 1, PixelFormat.Format4bppIndexed);
+			ColorPalette palette = bitmap.Palette;
+			for (int l = 0; l < 16; l++)
 			{
-				binaryWriter.Write(array4[k]);
+				palette.Entries[l] = Color.FromArgb(l << 4, l << 4, l << 4);
 			}
-			for (int l = 0; l < 3200; l++)
+			r_bitmap.Palette = palette;
+
+			if (r_bitmap == null)
 			{
-				binaryWriter.Write(array2[l]);
+				MessageBox.Show("MakeImage Failed");
+				return null;
 			}
+			return r_bitmap;
 		}
 
-		void SavePal(FileStream fs, ColorPalette palette)
+		byte[] SetIndexedPixel(byte[] retimage, byte[] srcimage, int x, int y, int position)
 		{
-			byte[] buffer = new byte[40]
-			{82, 76, 67, 78, 255, 254, 0, 1, 72, 0, 0, 0, 16, 0, 1, 0, 84, 84, 76, 80, 56, 0, 0, 0, 4, 0, 10, 0, 0, 0, 0, 0, 32, 0, 0, 0, 16, 0, 0, 0};
-			BinaryWriter binaryWriter = new BinaryWriter(fs);
-			binaryWriter.Write(buffer, 0, 40);
+			retimage[y * width + x] = srcimage[position];
+
+			return retimage;
+		}
+		
+		ColorPalette SetPal(FileStream fs, int palNum)
+		{
+			fs.Seek((long)(40 + (palNum * 32)), SeekOrigin.Begin);
 			ushort[] array = new ushort[16];
+			BinaryReader binaryReader = new BinaryReader(fs);
 			for (int i = 0; i < 16; i++)
 			{
-				array[i] = (ushort)(((palette.Entries[i].R >> 3) & 0x1F) | (((palette.Entries[i].G >> 3) & 0x1F) << 5) | (((palette.Entries[i].B >> 3) & 0x1F) << 10));
+				array[i] = binaryReader.ReadUInt16();
 			}
+			Bitmap bitmap = new Bitmap(1, 1, PixelFormat.Format4bppIndexed);
+			ColorPalette palette = bitmap.Palette;
 			for (int j = 0; j < 16; j++)
 			{
-				binaryWriter.Write(array[j]);
+				palette.Entries[j] = Color.FromArgb((array[j] & 0x1F) << 3, ((array[j] >> 5) & 0x1F) << 3, ((array[j] >> 10) & 0x1F) << 3);
+			}
+			return palette;
+		}
+		
+		void SavePNG(Bitmap image, string filename)
+		{
+			if (image != null)
+			{
+				IndexedBitmapHandler Handler = new IndexedBitmapHandler();
+				byte[] array = Handler.GetArray(image);
+				Bitmap temp = Handler.MakeImage(image.Width, image.Height, array, image.PixelFormat);
+				ColorPalette cleaned = Handler.CleanPalette(image);
+				temp.Palette = cleaned;
+				temp.Save(filename, ImageFormat.Png);
+			}
+			else
+			{
+				System.IO.File.Create(filename);
 			}
 		}
 	}
