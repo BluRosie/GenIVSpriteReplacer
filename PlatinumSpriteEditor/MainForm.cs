@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Security.Authentication;
 using System.Xml;
+using System.Linq.Expressions;
 
 namespace PlatinumSpriteEditor
 {
@@ -20,70 +21,54 @@ namespace PlatinumSpriteEditor
 		{
 			int i;
 
+			FileStream ncgr;
+
+			Bitmap png;
+
 			//Console.WriteLine("{0}", args[0]);
 
 			if (args.Length != 2)
 			{
-				Console.WriteLine("gengfxicons converts Nintendo's ncgr format to pngs for use with icons specifically\n\nUsage:  gengfxicons [path to unpacked a020] [path to output directory]\n");
+				Console.WriteLine("geniconnarc converts the icon gfx folder format to the files directly for use with HGSS mon icons\n\nUsage:  geniconnarc [path to gfx directory] [path to output directory]\n");
 				return;
 			}
 
 			System.IO.Directory.CreateDirectory(args[1]);
 
-			FileStream palList = System.IO.File.OpenRead("rawdata\\iconpalettetable.bin"); // tired of making everything super portable.  set it up correctly and you won't have to deal with anything.
-			FileStream nclr = System.IO.File.OpenRead(args[0] + "\\a020_000"); // all of the palettes
-
-			// backf backm frontf frontm pal shinypal
 			for (i = 7; i <= 550; i++)
 			{
-				Bitmap png;
-				BinaryReader binaryReader = new BinaryReader(palList);
-				int species = i - 7;
-				int palNum = binaryReader.ReadByte();
+				ncgr = System.IO.File.OpenWrite(args[1] + "\\a020_" + i.ToString("D3")); // icon output file
 
-				FileStream ncgr = System.IO.File.OpenRead(args[0] + "\\a020_" + i.ToString("D3"));
-
-				if (ncgr.Length > 0)
+				try
 				{
-					png = MakeImage(ncgr);
-					png.Palette = SetPal(nclr, palNum);
+					png = (Bitmap)Image.FromFile(args[0] + "\\" + (i - 7).ToString("D3") + ".png");
 				}
-				else
+				catch (OutOfMemoryException)
+				{
 					png = null;
+				}
 
-				SavePNG(png, args[1] + "\\" + species.ToString("D3") + ".png");
+				if (png != null)
+				{
+					SaveBin(ncgr, png);
+				}
 			}
 		}
 
 		const int width = 32;
 		const int height = 64;
 		const int filesize = width * height;
-
-		Bitmap MakeImage(FileStream fs)
+				
+		void SaveBin(FileStream fs, Bitmap source)
 		{
-			fs.Seek(48L, SeekOrigin.Begin);
-			BinaryReader binaryReader = new BinaryReader(fs);
-			UInt16[] array = new UInt16[filesize / 4];
-			for (int i = 0; i < filesize / 4; i++)
-			{
-				array[i] = binaryReader.ReadUInt16();
-			}
-
-			Bitmap r_bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+			BinaryWriter binaryWriter = new BinaryWriter(fs);
 			rect = new Rectangle(0, 0, width, height);
-			byte[] array3 = new byte[filesize + 1], array4 = new byte[filesize + 1]; // +2 prevents reading beyond end of file apparently
-
-			for (int k = 0; k < filesize / 4; k += 2)
-			{
-				array3[k * 4] = (byte)((array[(k)]) & 0xF);
-				array3[k * 4 + 1] = (byte)((array[(k)] >> 4) & 0xF);
-				array3[k * 4 + 2] = (byte)((array[(k)] >> 8) & 0xF);
-				array3[k * 4 + 3] = (byte)((array[(k)] >> 12) & 0xF);
-				array3[k * 4 + 4] = (byte)((array[(k + 1)]) & 0xF);
-				array3[k * 4 + 5] = (byte)((array[(k + 1)] >> 4) & 0xF);
-				array3[k * 4 + 6] = (byte)((array[(k + 1)] >> 8) & 0xF);
-				array3[k * 4 + 7] = (byte)((array[(k + 1)] >> 12) & 0xF);
-			}
+			BitmapData bitmapData = source.LockBits(rect, ImageLockMode.ReadOnly, source.PixelFormat);
+			IntPtr scan = bitmapData.Scan0;
+			byte[] array = new byte[filesize + 1], rearray = new byte[filesize + 1];
+			Marshal.Copy(scan, array, 0, filesize);
+			source.UnlockBits(bitmapData);
+			ushort[] array2 = new ushort[filesize / 4];
 
 			int pos = 0;
 			for (int tiley = 0; tiley < height / 8; tiley++)
@@ -94,73 +79,35 @@ namespace PlatinumSpriteEditor
 					{
 						for (int x = 0; x < 8; x++)
 						{
-							SetIndexedPixel(array4, array3, x + tilex * 8, y + tiley * 8, pos);
+							rearray[pos] = GetIndexedPixel(array, x + tilex * 8, y + tiley * 8);
 							pos++;
 						}
 					}
 				}
 			}
-
-			BitmapData bitmapData = r_bitmap.LockBits(rect, ImageLockMode.WriteOnly, r_bitmap.PixelFormat);
-			IntPtr scan = bitmapData.Scan0;
-			Marshal.Copy(array4, 0, scan, filesize);
-			r_bitmap.UnlockBits(bitmapData);
-			Bitmap bitmap = new Bitmap(1, 1, PixelFormat.Format4bppIndexed);
-			ColorPalette palette = bitmap.Palette;
-			for (int l = 0; l < 16; l++)
+			
+			for (int i = 0; i < filesize / 4; i++)
 			{
-				palette.Entries[l] = Color.FromArgb(l << 4, l << 4, l << 4);
+				array2[i] = (ushort)((rearray[i * 4] & 0xF) | ((rearray[i * 4 + 1] & 0xF) << 4) | ((rearray[i * 4 + 2] & 0xF) << 8) | ((rearray[i * 4 + 3] & 0xF) << 12));
 			}
-			r_bitmap.Palette = palette;
 
-			if (r_bitmap == null)
+
+
+			byte[] array4 = new byte[48]
+			{0x52, 0x47, 0x43, 0x4E, 0xFF, 0xFE, 0x01, 0x01, 0x30, 0x04, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x52, 0x41, 0x48, 0x43, 0x20, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00};
+			for (int k = 0; k < 48; k++)
 			{
-				MessageBox.Show("MakeImage Failed");
-				return null;
+				binaryWriter.Write(array4[k]);
 			}
-			return r_bitmap;
+			for (int l = 0; l < filesize / 4; l++)
+			{
+				binaryWriter.Write(array2[l]);
+			}
 		}
 
-		byte[] SetIndexedPixel(byte[] retimage, byte[] srcimage, int x, int y, int position)
+		byte GetIndexedPixel(byte[] image, int x, int y)
 		{
-			retimage[y * width + x] = srcimage[position];
-
-			return retimage;
-		}
-		
-		ColorPalette SetPal(FileStream fs, int palNum)
-		{
-			fs.Seek((long)(40 + (palNum * 32)), SeekOrigin.Begin);
-			ushort[] array = new ushort[16];
-			BinaryReader binaryReader = new BinaryReader(fs);
-			for (int i = 0; i < 16; i++)
-			{
-				array[i] = binaryReader.ReadUInt16();
-			}
-			Bitmap bitmap = new Bitmap(1, 1, PixelFormat.Format4bppIndexed);
-			ColorPalette palette = bitmap.Palette;
-			for (int j = 0; j < 16; j++)
-			{
-				palette.Entries[j] = Color.FromArgb((array[j] & 0x1F) << 3, ((array[j] >> 5) & 0x1F) << 3, ((array[j] >> 10) & 0x1F) << 3);
-			}
-			return palette;
-		}
-		
-		void SavePNG(Bitmap image, string filename)
-		{
-			if (image != null)
-			{
-				IndexedBitmapHandler Handler = new IndexedBitmapHandler();
-				byte[] array = Handler.GetArray(image);
-				Bitmap temp = Handler.MakeImage(image.Width, image.Height, array, image.PixelFormat);
-				ColorPalette cleaned = Handler.CleanPalette(image);
-				temp.Palette = cleaned;
-				temp.Save(filename, ImageFormat.Png);
-			}
-			else
-			{
-				System.IO.File.Create(filename);
-			}
+			return image[y * width + x];
 		}
 	}
 }
