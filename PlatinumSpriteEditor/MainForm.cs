@@ -10,6 +10,8 @@ using System.Diagnostics;
 using System.Security.Authentication;
 using System.Xml;
 using System.Linq.Expressions;
+using DSDecmp.Formats;
+using DSDecmp.Formats.Nitro;
 
 namespace PlatinumSpriteEditor
 {
@@ -56,7 +58,7 @@ namespace PlatinumSpriteEditor
 		}
 
 		const int width = 32;
-		const int height = 64;
+		const int height = 16;
 		const int filesize = width * height;
 				
 		void SaveBin(FileStream fs, Bitmap source)
@@ -91,10 +93,10 @@ namespace PlatinumSpriteEditor
 				array2[i] = (ushort)((rearray[i * 4] & 0xF) | ((rearray[i * 4 + 1] & 0xF) << 4) | ((rearray[i * 4 + 2] & 0xF) << 8) | ((rearray[i * 4 + 3] & 0xF) << 12));
 			}
 
-
-
 			byte[] array4 = new byte[48]
 			{0x52, 0x47, 0x43, 0x4E, 0xFF, 0xFE, 0x01, 0x01, 0x30, 0x04, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00, 0x52, 0x41, 0x48, 0x43, 0x20, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00};
+
+			byte[] array5 = new byte[filesize / 4];
 			for (int k = 0; k < 48; k++)
 			{
 				binaryWriter.Write(array4[k]);
@@ -103,6 +105,8 @@ namespace PlatinumSpriteEditor
 			{
 				binaryWriter.Write(array2[l]);
 			}
+
+			
 		}
 
 		byte GetIndexedPixel(byte[] image, int x, int y)
