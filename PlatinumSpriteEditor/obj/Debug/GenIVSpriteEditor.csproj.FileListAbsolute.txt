@@ -1,7 +1,7 @@
-D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\GenIVSpriteEditor.csprojAssemblyReference.cache
 D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\GenIVSpriteEditor.csproj.CoreCompileInputs.cache
+D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\GenIVSpriteEditor.csprojAssemblyReference.cache
+D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\geniconnarc.exe
+D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\geniconnarc.pdb
 D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\bin\Debug\geniconnarc.exe.config
 D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\bin\Debug\geniconnarc.exe
 D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\bin\Debug\geniconnarc.pdb
-D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\geniconnarc.exe
-D:\heartgold\tools\GenIVSpriteReplacer\PlatinumSpriteEditor\obj\Debug\geniconnarc.pdb

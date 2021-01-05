@@ -79,11 +79,5 @@
   <ItemGroup>
     <None Include="app.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Plugins\DSDecmp\DSDecmp.csproj">
-      <Project>{e6f419f9-d6b5-4be7-99bb-97c48c927ff3}</Project>
-      <Name>DSDecmp</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
